@@ -1,0 +1,16 @@
+/* Tailwind v4 – single import */
+@import "tailwindcss";
+
+/* OPTIONAL: your theme tokens / tweaks can go here */
+:root {
+  --bg: #0b0f14;
+  --panel: #111827;
+  --text: #e5e7eb;
+}
+
+/* A tiny reset to ensure body uses the theme */
+html, body, #__next { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+}
