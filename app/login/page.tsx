@@ -1,47 +1,49 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabaseBrowser";
 
-export default function LoginPage() {
+// Prevent static export/prerender for this page (safer for auth)
+// and remove the CSR bailout warning during build.
+export const dynamic = "force-dynamic";
+
+function LoginInner() {
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const search = useSearchParams();
+  const supabase = createBrowserSupabaseClient();
 
-  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [message, setMessage] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
+    "idle"
+  );
+  const [message, setMessage] = useState<string>("");
 
-  // If the user is already signed in, bounce them to the dashboard
+  // Optional: if we arrive with `?redirect=...` we’ll use it later
+  const redirect = searchParams.get("redirect") || "/";
+
+  // If already signed in, go home
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.user) {
-        const biz = search?.get("biz");
-        router.replace(biz ? `/?biz=${biz}` : "/");
-      }
-    })();
-  }, [router, search, supabase]);
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) router.replace("/");
+    });
+  }, [router, supabase]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     setStatus("sending");
-    setMessage(null);
+    setMessage("");
 
     try {
-      // Preserve ?biz from the current URL if present
-      const current = new URL(window.location.href);
-      const biz = current.searchParams.get("biz");
-      const redirect = biz
-        ? `${window.location.origin}/auth/callback?biz=${encodeURIComponent(biz)}`
-        : `${window.location.origin}/auth/callback`;
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "";
+      const emailRedirectTo = `${origin}/auth/callback?next=${encodeURIComponent(
+        redirect
+      )}`;
 
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: {
-          emailRedirectTo: redirect, // <<< THIS IS THE IMPORTANT PART
-        },
+        options: { emailRedirectTo },
       });
 
       if (error) {
@@ -49,66 +51,70 @@ export default function LoginPage() {
         setMessage(error.message || "Failed to send magic link.");
         return;
       }
-
       setStatus("sent");
       setMessage(
-        "Check your email for a magic link. Open it within a minute to finish signing in."
+        "Magic link sent! Check your email and open the link on this device."
       );
     } catch (err: any) {
       setStatus("error");
-      setMessage(err?.message || "Something went wrong.");
+      setMessage(err?.message ?? "Something went wrong.");
     }
   }
 
   return (
-    <div className="min-h-screen grid place-items-center bg-[#0b1115] text-slate-100">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0f151a] p-6 shadow-xl">
-        <div className="mb-6">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500" />
-            <h1 className="text-xl font-semibold">Sign in to Covex</h1>
-          </div>
-          <p className="mt-2 text-sm text-slate-400">
-            We’ll email you a magic link to sign in.
-          </p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-[#0b1115] text-white p-6">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-6 shadow-xl">
+        <h1 className="text-2xl font-semibold">Sign in to Covex</h1>
+        <p className="mt-2 text-sm text-white/60">
+          We’ll email you a magic link to log in.
+        </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <label className="block">
-            <span className="mb-1 block text-sm">Email</span>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full rounded-lg border border-white/10 bg-[#0b1115] px-3 py-2 outline-none focus:border-cyan-500"
-            />
-          </label>
-
+        <form onSubmit={handleSend} className="mt-6 space-y-4">
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+            className="w-full rounded-xl border border-white/10 bg-black/30 p-3 outline-none focus:border-white/30"
+          />
           <button
             type="submit"
             disabled={status === "sending"}
-            className="w-full rounded-lg bg-cyan-500 px-4 py-2 font-medium text-black hover:bg-cyan-400 disabled:opacity-60"
+            className="w-full rounded-xl bg-white text-black py-3 font-medium hover:bg-white/90 disabled:opacity-60"
           >
-            {status === "sending" ? "Sending…" : "Send magic link"}
+            {status === "sending" ? "Sending..." : "Send magic link"}
           </button>
         </form>
 
         {message && (
           <div
-            className={`mt-4 rounded-lg px-3 py-2 text-sm ${
-              status === "error" ? "bg-red-500/10 text-red-300" : "bg-white/5 text-slate-200"
+            className={`mt-4 text-sm ${
+              status === "error" ? "text-red-400" : "text-green-400"
             }`}
           >
             {message}
           </div>
         )}
 
-        <div className="mt-6 text-center text-xs text-slate-500">
-          This will redirect back to <code>/auth/callback</code> to complete sign-in.
+        <div className="mt-6">
+          <button
+            onClick={() => router.push("/")}
+            className="text-sm text-white/70 hover:text-white"
+          >
+            Continue without logging in
+          </button>
         </div>
       </div>
     </div>
+  );
+}
+
+// Wrap the component that calls useSearchParams in Suspense
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-white">Loading…</div>}>
+      <LoginInner />
+    </Suspense>
   );
 }
