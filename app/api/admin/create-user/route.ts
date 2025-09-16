@@ -1,56 +1,76 @@
-// app/api/admin/create-user/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const adminSecret = process.env.ADMIN_PROVISION_SECRET!; // <-- set this in Vercel
+function reqHeader(req: NextRequest, name: string) {
+  return req.headers.get(name) || req.headers.get(name.toLowerCase());
+}
+
+function bad(message: string, code = 400) {
+  return NextResponse.json({ error: message }, { status: code });
+}
 
 export async function POST(req: NextRequest) {
+  const authz = reqHeader(req, "Authorization");
+  const token = authz?.startsWith("Bearer ") ? authz.slice(7) : undefined;
+  if (!token) return bad("Missing Authorization: Bearer <ADMIN_PROVISION_SECRET>", 401);
+  if (token !== process.env.ADMIN_PROVISION_SECRET) return bad("Invalid admin secret", 401);
+
+  const body = await req.json().catch(() => null);
+  if (!body) return bad("Invalid JSON body");
+  const { email, password, business_id, role = "owner" } = body;
+
+  if (!email || !password || !business_id) {
+    return bad("Required fields: email, password, business_id");
+  }
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  if (!url || !serviceRole) return bad("Server missing Supabase env vars", 500);
+
+  const admin = createClient(url, serviceRole, { auth: { persistSession: false } });
+
   try {
-    // 1) Auth guard: only allow if header matches
-    const authz = req.headers.get("authorization") || "";
-    const token = authz.startsWith("Bearer ") ? authz.slice("Bearer ".length) : "";
-    if (!token || token !== adminSecret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // 1) Does the user already exist?
+    const { data: gotUserByEmail } = await admin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1,
+      email
+    } as any); // types are a bit narrow; this is safe in runtime
+
+    let userId: string | null = null;
+
+    if (gotUserByEmail?.users?.length) {
+      userId = gotUserByEmail.users[0].id;
+    } else {
+      // 2) Create user with metadata (auto-confirmed)
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { business_id, role }
+      });
+      if (createErr) {
+        return bad(`Auth admin.createUser failed: ${createErr.message}`, 500);
+      }
+      userId = created?.user?.id ?? null;
     }
 
-    // 2) Parse body
-    const { email, password, business_id, role } = await req.json();
+    if (!userId) return bad("Could not create or find user in auth", 500);
 
-    if (!email || !password || !business_id) {
-      return NextResponse.json(
-        { error: "Missing email, password, or business_id" },
-        { status: 400 }
+    // 3) Upsert profile (idempotent)
+    const { error: upsertErr } = await admin
+      .from("profiles")
+      .upsert(
+        { id: userId, business_id, role },
+        { onConflict: "id" }
       );
+    if (upsertErr) {
+      return bad(`Upsert profiles failed: ${upsertErr.message}`, 500);
     }
 
-    // 3) Admin supabase client
-    const admin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false }
-    });
-
-    // 4) Create user via Admin API (metadata seeds our trigger)
-    const { data, error } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // set true if you want them active immediately
-      user_metadata: {
-        business_id,
-        role: role || "member",
-      },
-    });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    // 5) Respond with user id/email
-    return NextResponse.json(
-      { user_id: data.user?.id, email: data.user?.email },
-      { status: 200 }
-    );
+    return NextResponse.json({ ok: true, user_id: userId, email, business_id, role });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 });
+    const msg = e?.message || String(e);
+    return bad(`Unhandled server error: ${msg}`, 500);
   }
 }
