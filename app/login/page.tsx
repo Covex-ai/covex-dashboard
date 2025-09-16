@@ -1,64 +1,33 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabaseBrowser";
 
-// Prevent static export/prerender for this page (safer for auth)
-// and remove the CSR bailout warning during build.
 export const dynamic = "force-dynamic";
 
 function LoginInner() {
-  const searchParams = useSearchParams();
   const router = useRouter();
+  const params = useSearchParams();
+  const next = params.get("next") || "/";
   const supabase = createBrowserSupabaseClient();
 
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
-    "idle"
-  );
-  const [message, setMessage] = useState<string>("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Optional: if we arrive with `?redirect=...` we’ll use it later
-  const redirect = searchParams.get("redirect") || "/";
-
-  // If already signed in, go home
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.replace("/");
-    });
-  }, [router, supabase]);
-
-  async function handleSend(e: React.FormEvent) {
+  async function onLogin(e: React.FormEvent) {
     e.preventDefault();
-    setStatus("sending");
-    setMessage("");
-
-    try {
-      const origin =
-        typeof window !== "undefined" ? window.location.origin : "";
-      const emailRedirectTo = `${origin}/auth/callback?next=${encodeURIComponent(
-        redirect
-      )}`;
-
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo },
-      });
-
-      if (error) {
-        setStatus("error");
-        setMessage(error.message || "Failed to send magic link.");
-        return;
-      }
-      setStatus("sent");
-      setMessage(
-        "Magic link sent! Check your email and open the link on this device."
-      );
-    } catch (err: any) {
-      setStatus("error");
-      setMessage(err?.message ?? "Something went wrong.");
+    setErr(null);
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) {
+      setErr(error.message);
+      return;
     }
+    router.replace(next);
   }
 
   return (
@@ -66,10 +35,10 @@ function LoginInner() {
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-6 shadow-xl">
         <h1 className="text-2xl font-semibold">Sign in to Covex</h1>
         <p className="mt-2 text-sm text-white/60">
-          We’ll email you a magic link to log in.
+          Use your email and password.
         </p>
 
-        <form onSubmit={handleSend} className="mt-6 space-y-4">
+        <form onSubmit={onLogin} className="mt-6 space-y-4">
           <input
             type="email"
             required
@@ -78,31 +47,32 @@ function LoginInner() {
             placeholder="you@company.com"
             className="w-full rounded-xl border border-white/10 bg-black/30 p-3 outline-none focus:border-white/30"
           />
+          <input
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Your password"
+            className="w-full rounded-xl border border-white/10 bg-black/30 p-3 outline-none focus:border-white/30"
+          />
           <button
             type="submit"
-            disabled={status === "sending"}
+            disabled={loading}
             className="w-full rounded-xl bg-white text-black py-3 font-medium hover:bg-white/90 disabled:opacity-60"
           >
-            {status === "sending" ? "Sending..." : "Send magic link"}
+            {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
 
-        {message && (
-          <div
-            className={`mt-4 text-sm ${
-              status === "error" ? "text-red-400" : "text-green-400"
-            }`}
-          >
-            {message}
-          </div>
-        )}
+        {err && <div className="mt-4 text-sm text-red-400">{err}</div>}
 
-        <div className="mt-6">
+        <div className="mt-6 text-sm text-white/70">
+          New here?{" "}
           <button
-            onClick={() => router.push("/")}
-            className="text-sm text-white/70 hover:text-white"
+            onClick={() => router.push("/signup")}
+            className="underline hover:text-white"
           >
-            Continue without logging in
+            Create an account
           </button>
         </div>
       </div>
@@ -110,7 +80,6 @@ function LoginInner() {
   );
 }
 
-// Wrap the component that calls useSearchParams in Suspense
 export default function LoginPage() {
   return (
     <Suspense fallback={<div className="p-6 text-white">Loading…</div>}>
