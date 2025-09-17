@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { subDays } from "date-fns";
-import { createBrowserSupabaseClient } from "../../../lib/supabaseBrowser";
+import { createBrowserSupabaseClient } from "@/lib/supabaseBrowser";
 
 type Appt = {
   business_id: string;
