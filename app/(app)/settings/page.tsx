@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createBrowserSupabaseClient } from "../../../lib/supabaseBrowser";
+import { createBrowserSupabaseClient } from "@/lib/supabaseBrowser";
 
 export default function SettingsPage() {
   const sb = useMemo(() => createBrowserSupabaseClient(), []);
