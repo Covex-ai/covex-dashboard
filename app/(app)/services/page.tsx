@@ -84,7 +84,7 @@ export default function ServicesPage() {
         .map(([service, v]) => ({
           service,
           count: v.count,
-          revenue: Math.round(v.revenue),
+          revenue: Math.round(v.revenue)
         }))
         .sort((a, b) => b.revenue - a.revenue);
 
