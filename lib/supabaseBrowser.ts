@@ -4,8 +4,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * These MUST be set in your environment (and be NEXT_PUBLIC_ so they are exposed
- * to the browser). In Vercel: Project → Settings → Environment Variables.
+ * These MUST be set in your environment (and be NEXT_PUBLIC_ so they are exposed to the browser)
+ * Vercel → Project → Settings → Environment Variables
  *
  * NEXT_PUBLIC_SUPABASE_URL       = https://xxxxxxxxxxxx.supabase.co
  * NEXT_PUBLIC_SUPABASE_ANON_KEY  = <anon key>
@@ -19,13 +19,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-/**
- * Browser factory. Use this inside client components/pages:
- *   const sb = useMemo(() => createBrowserSupabaseClient(), []);
- */
+/** Create a browser client for use in client components/pages. */
 export function createBrowserSupabaseClient(): SupabaseClient {
   return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { persistSession: true, autoRefreshToken: true },
+    auth: { persistSession: true, autoRefreshToken: true }
   });
 }
 
