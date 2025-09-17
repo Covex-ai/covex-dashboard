@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { addDays, format, isAfter, parseISO, startOfDay, subDays } from "date-fns";
+import { addDays, format, parseISO, subDays } from "date-fns";
 import { createBrowserSupabaseClient } from "@/lib/supabaseBrowser";
 
 type Appt = {
@@ -23,12 +23,10 @@ type RangeKey = "7" | "30" | "90" | "future";
 
 function phoneFmt(p?: string | null) {
   if (!p) return "";
-  // quick pretty: +15551234567 -> (555) 123-4567
   const m = p.replace(/[^\d]/g, "").match(/^1?(\d{3})(\d{3})(\d{4})$/);
   return m ? `(${m[1]}) ${m[2]}-${m[3]}` : p;
 }
 
-// Resolve business like on dashboard (URL ?biz=… overrides profiles row)
 async function resolveBusinessId(sb: ReturnType<typeof createBrowserSupabaseClient>) {
   const urlBiz = new URL(window.location.href).searchParams.get("biz");
   if (urlBiz) return urlBiz;
