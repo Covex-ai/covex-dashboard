@@ -1,30 +1,32 @@
 // lib/supabaseBrowser.ts
+"use client";
+
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+/**
+ * These MUST be set in your environment (and be NEXT_PUBLIC_ so they are exposed
+ * to the browser). In Vercel: Project → Settings → Environment Variables.
+ *
+ * NEXT_PUBLIC_SUPABASE_URL       = https://xxxxxxxxxxxx.supabase.co
+ * NEXT_PUBLIC_SUPABASE_ANON_KEY  = <anon key>
+ */
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing Supabase environment variables");
+  throw new Error(
+    "Missing Supabase env. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
+  );
 }
 
 /**
- * Factory used by client components/pages.
- * Matches imports like:  import { createBrowserSupabaseClient } from "@/lib/supabaseBrowser";
+ * Browser factory. Use this inside client components/pages:
+ *   const sb = useMemo(() => createBrowserSupabaseClient(), []);
  */
 export function createBrowserSupabaseClient(): SupabaseClient {
   return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-    },
+    auth: { persistSession: true, autoRefreshToken: true },
   });
 }
-
-/**
- * Singleton client for simple modules that import { supabase } directly.
- * Matches imports like:  import { supabase } from "@/lib/supabaseBrowser";
- */
-export const supabase: SupabaseClient = createBrowserSupabaseClient();
 
 export type { SupabaseClient };
