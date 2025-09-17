@@ -7,7 +7,7 @@ import BookingsLineChart from "../components/BookingsLineChart";
 import BookingsBarChart from "../components/BookingsBarChart";
 import TopServicesBar from "../components/TopServicesBar";
 import UpcomingTable from "../components/UpcomingTable";
-import { createBrowserSupabaseClient } from "../lib/supabaseBrowser";
+import { createBrowserSupabaseClient } from "../../lib/supabaseBrowser";
 
 type Appt = {
   business_id: string;
