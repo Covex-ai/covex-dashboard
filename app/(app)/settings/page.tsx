@@ -15,7 +15,6 @@ export default function SettingsPage() {
       const { data: userData } = await sb.auth.getUser();
       if (userData?.user) {
         setEmail(userData.user.email ?? "");
-        // load profiles row
         const { data } = await sb
           .from("profiles")
           .select("business_id")
@@ -65,7 +64,7 @@ export default function SettingsPage() {
         <input
           value={biz}
           onChange={(e) => setBiz(e.target.value)}
-          placeholder="daec3330-461e-4922-9cf9-65afd8f21c64"
+          placeholder="your-business-id"
           className="w-full bg-[#121a21] border border-white/10 rounded px-3 py-2 text-sm outline-none"
         />
         <div className="flex gap-2">
@@ -79,15 +78,11 @@ export default function SettingsPage() {
           {message && <div className="text-sm text-slate-400 self-center">{message}</div>}
         </div>
         <div className="text-xs text-slate-500">
-          This writes to your <code>profiles</code> row (column <code>business_id</code>). Your RLS
-          policy must allow you to read/write your own profile.
+          This writes to your <code>profiles</code> row (column <code>business_id</code>).
         </div>
       </div>
 
-      <button
-        onClick={signOut}
-        className="px-4 py-2 rounded bg-zinc-700 hover:bg-zinc-600"
-      >
+      <button onClick={signOut} className="px-4 py-2 rounded bg-zinc-700 hover:bg-zinc-600">
         Sign out
       </button>
     </div>
