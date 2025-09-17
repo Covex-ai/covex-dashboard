@@ -1,24 +1,30 @@
-// tailwind.config.ts
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: ["class"],
   content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
   ],
   theme: {
     extend: {
       colors: {
-        // subtle slate palette for dark dashboard
-        "panel": "#0f151a",
+        covex: {
+          black: "#0B0B0C",   // page bg
+          steel: "#2A2B30",   // sidebar / panels
+          silver: "#D6D7DB",  // secondary text / borders
+          ink: "#F4F5F7",     // high-contrast "white"
+          accent: "#9BA0AE",  // optional accent
+        },
       },
       boxShadow: {
-        panel: "0 10px 30px rgba(0,0,0,0.35)",
+        soft: "0 12px 40px rgba(0,0,0,0.35)",
+      },
+      borderRadius: {
+        xl2: "1rem",
       },
     },
   },
   plugins: [],
 };
-
 export default config;
