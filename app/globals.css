@@ -1,16 +1,18 @@
-/* Tailwind v4 – single import */
-@import "tailwindcss";
-
-/* OPTIONAL: your theme tokens / tweaks can go here */
-:root {
-  --bg: #0b0f14;
-  --panel: #111827;
-  --text: #e5e7eb;
+:root{
+  --bg: #0B0B0C;        /* covex.black */
+  --panel: #2A2B30;     /* covex.steel */
+  --text: #F4F5F7;      /* covex.ink */
+  --muted: #D6D7DB;     /* covex.silver */
 }
 
-/* A tiny reset to ensure body uses the theme */
-html, body, #__next { height: 100%; }
-body {
+html, body {
   background: var(--bg);
   color: var(--text);
+}
+
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.35);
 }
